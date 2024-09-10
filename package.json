@@ -1,0 +1,27 @@
+{
+  "name": "telegram-bot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon index.js",
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Succu8/telegram-bot-js.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Succu8/telegram-bot-js/issues"
+  },
+  "homepage": "https://github.com/Succu8/telegram-bot-js#readme",
+  "dependencies": {
+    "chart.js": "3.9.1",
+    "chartjs-node-canvas": "3.2.0",
+    "node-telegram-bot-api": "^0.66.0",
+    "nodemon": "^3.1.4"
+  }
+}
