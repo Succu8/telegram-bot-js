@@ -1,25 +1,20 @@
 const TelegramApiLib = require('node-telegram-bot-api');
 const {ChartJSNodeCanvas} = require('chartjs-node-canvas');
-
+const XLSX = require('xlsx');
 
 const TELEGRAM_TOKEN = '7218810611:AAEAT87rJQRZRFCl4dMbJpeopMNf7dtrq-4';
 const telegramBot = new TelegramApiLib(TELEGRAM_TOKEN, {polling: true});
+
+const workbook = XLSX.readFile('Data-test-companies.xlsx');
 
 telegramBot.setMyCommands([
   {command: '/start', description: 'Start'},
   {command: '/info', description: 'Info'}
 ]);
 
-const data = {
-    companies: [
-      {code: 'microsoft', name: 'Microsoft', income: 120000, expenditure: 80000, profit: 40000, kpn: 10000},
-      {code: 'apple', name: 'Apple', income: 130000, expenditure: 85000, profit: 45000, kpn: 11250},
-      {code: 'alphabet', name: 'Alphabet', income: 140000, expenditure: 90000, profit: 50000, kpn: 12500},
-      {code: 'pfizer', name: 'Pfizer', income: 150000, expenditure: 95000, profit: 55000, kpn: 13750},
-    ],
-    months: ['Январь', 'Февраль', 'Март', 'Апрель']
-  }
-;
+let currentSheet;
+let currentCompany;
+let currentSheetFinancesType;
 
 telegramBot.on('message', async msg => {
   const chatId = msg.chat.id;
@@ -30,7 +25,7 @@ telegramBot.on('message', async msg => {
   }
 
   if (msg.text === '/info') {
-    telegramBot.sendMessage(chatId, 'info command logic')
+    await telegramBot.sendMessage(chatId, 'info command logic')
     return;
   }
 
@@ -55,48 +50,47 @@ telegramBot.on('callback_query', async (callbackQuery) => {
   const chatId = callbackQuery.message.chat.id;
 
   if (command === 'start_report') {
-    const companies = data.companies.map(company => [{text: company.name, callback_data: company.code}]);
+    const inlineKeyboardCompanies =
+      workbook.SheetNames.map((name) => [{text: name, callback_data: name}]);
 
     return telegramBot.sendMessage(chatId, 'Выберите компанию:', {
       reply_markup: {
-        inline_keyboard: companies
+        inline_keyboard: inlineKeyboardCompanies
       },
     });
   }
 
-  let selectedCompanyName;
+  const selectedCompany = workbook.SheetNames.find((name) => name === command);
 
-  if (data.companies.some(company => {
-    if (company.code === command) {
-      selectedCompanyName = company.name;
-      return true;
-    }
-    return false;
-  })) {
-    return telegramBot.sendMessage(chatId, `Вы выбрали ${selectedCompanyName}. Что хотите посмотреть?`, {
+  if (selectedCompany) {
+    currentCompany = selectedCompany;
+    currentSheet = workbook.Sheets[currentCompany];
+    currentSheetFinancesType = [`${currentSheet['B1'].v}`, `${currentSheet['C1'].v}`, `${currentSheet['D1'].v}`, `${currentSheet['E1'].v}`]
+
+    return telegramBot.sendMessage(chatId, `Вы выбрали ${currentCompany} Что хотите посмотреть?`, {
       reply_markup: {
         inline_keyboard: [
-          [{text: 'Доход', callback_data: `${command}_income`}],
-          [{text: 'Расход', callback_data: `${command}_expenditure`}],
-          [{text: 'Прибыль', callback_data: `${command}_profit`}],
-          [{text: 'КПН', callback_data: `${command}_kpn`}],
+          [{text: 'Доход', callback_data: currentSheetFinancesType[0]}],
+          [{text: 'Расход', callback_data: currentSheetFinancesType[1]}],
+          [{text: 'Прибыль', callback_data: currentSheetFinancesType[2]}],
+          [{text: 'КПН', callback_data: currentSheetFinancesType[3]}],
         ],
       },
     });
   }
 
-  const [company, type] = command.split('_');
+  if (currentSheetFinancesType.includes(command)) {
+    const jsonData = XLSX.utils.sheet_to_json(currentSheet);
 
-  if (['income', 'expenditure', 'profit', 'kpn'].includes(type)) {
-
-    const selectedCompany = data.companies.find(x => x.code === company);
+    const months = jsonData.map(x => x[currentSheet['A1'].v]);
+    const financesData = jsonData.map(x => x[command]);
 
     const configData = {
-      labels: data.months,
+      labels: months,
       datasets: [
         {
-          label: 'Значения',
-          data: [selectedCompany.income, selectedCompany.expenditure, selectedCompany.profit, selectedCompany.kpn],
+          label: command,
+          data: financesData,
           backgroundColor: 'rgba(54, 162, 235, 0.6)',
           borderColor: 'rgba(54, 162, 235, 1)',
           borderWidth: 1,
